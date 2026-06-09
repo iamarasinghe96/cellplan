@@ -19,14 +19,13 @@
 
     #map { width: 100vw; height: 100vh; }
 
-    /* ── Title panel (top-left) ── */
+    /* ── Title panel ── */
     #title-panel {
       position: fixed; top: 16px; left: 16px; z-index: 500;
-      background: rgba(12, 14, 20, 0.82);
+      background: rgba(12,14,20,0.82);
       backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);
       border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 14px;
-      padding: 13px 18px;
+      border-radius: 14px; padding: 13px 18px;
     }
     #title-panel h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; }
     #title-panel p  { color: rgba(255,255,255,0.45); font-size: 11px; margin-top: 2px; }
@@ -48,19 +47,60 @@
       position: fixed;
       bottom: 20px; left: 50%; transform: translateX(-50%);
       z-index: 500;
-      background: rgba(11, 13, 19, 0.84);
+      background: rgba(11,13,19,0.84);
       backdrop-filter: blur(26px); -webkit-backdrop-filter: blur(26px);
       border: 1px solid rgba(255,255,255,0.09);
       border-radius: 20px;
-      padding: 20px 22px 18px;
+      padding: 18px 22px 16px;
       width: min(980px, calc(100vw - 24px));
     }
 
-    /* Sliders */
-    .sliders-row {
-      display: flex; gap: 28px; margin-bottom: 18px; align-items: flex-end;
+    /* ── Collapse toggle ── */
+    #panel-header {
+      display: flex; align-items: flex-end; gap: 28px;
+      margin-bottom: 16px;
     }
-    .slider-group { flex: 1; }
+    #panel-header .slider-group { flex: 1; }
+
+    #collapse-btn {
+      flex-shrink: 0;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 8px;
+      color: rgba(255,255,255,0.55);
+      cursor: pointer;
+      padding: 7px 12px;
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
+      transition: background 0.2s, color 0.2s;
+      white-space: nowrap;
+      margin-bottom: 1px;
+    }
+    #collapse-btn:hover { background: rgba(255,255,255,0.13); color: #fff; }
+    #collapse-btn svg {
+      transition: transform 0.35s ease;
+    }
+    #control-panel.collapsed #collapse-btn svg {
+      transform: rotate(180deg);
+    }
+    #collapse-btn .btn-label { display: inline; }
+
+    /* ── Collapsible section ── */
+    #collapsible {
+      display: grid;
+      grid-template-rows: 1fr;
+      transition: grid-template-rows 0.38s ease, opacity 0.3s ease;
+      opacity: 1;
+      overflow: hidden;
+    }
+    #control-panel.collapsed #collapsible {
+      grid-template-rows: 0fr;
+      opacity: 0;
+    }
+    #collapsible-inner { min-height: 0; overflow: hidden; }
+
+    /* Sliders */
+    .slider-group { }
     .slider-label {
       display: flex; justify-content: space-between; align-items: baseline;
       margin-bottom: 9px;
@@ -88,9 +128,7 @@
       display: flex; justify-content: space-between;
       margin-top: 5px; padding: 0 1px;
     }
-    .slider-ticks span {
-      color: rgba(255,255,255,0.25); font-size: 10px; font-variant-numeric: tabular-nums;
-    }
+    .slider-ticks span { color: rgba(255,255,255,0.25); font-size: 10px; font-variant-numeric: tabular-nums; }
 
     /* Cell cards */
     .cells-row {
@@ -128,9 +166,7 @@
       height: 100%; border-radius: 4px;
       transition: width 0.5s ease, background-color 0.5s ease;
     }
-    .cell-footer {
-      display: flex; justify-content: space-between; align-items: baseline;
-    }
+    .cell-footer { display: flex; justify-content: space-between; align-items: baseline; }
     .cell-pct  { color: #fff; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
     .cell-meta { color: rgba(255,255,255,0.4); font-size: 10px; }
 
@@ -164,7 +200,6 @@
     #tooltip .tt-row   { color: rgba(255,255,255,0.6); }
     #tooltip .tt-val   { color: #fff; font-weight: 600; }
 
-    /* MapLibre attribution tweak */
     .maplibregl-ctrl-attrib { font-size: 10px !important; }
   </style>
 </head>
@@ -172,13 +207,11 @@
 
 <div id="map"></div>
 
-<!-- Title -->
 <div id="title-panel">
   <h1>AWMC Landfill Cell Plan</h1>
   <p>Lavington NSW — 3D Fill Visualiser</p>
 </div>
 
-<!-- Legend -->
 <div id="legend">
   <div class="legend-item"><div class="legend-swatch" style="background:rgba(96,153,34,0.85)"></div>Empty / Future</div>
   <div class="legend-item"><div class="legend-swatch" style="background:rgba(250,199,117,0.9)"></div>Filling (0–60%)</div>
@@ -186,7 +219,6 @@
   <div class="legend-item"><div class="legend-swatch" style="background:rgba(136,135,128,0.9)"></div>Capped / Closed</div>
 </div>
 
-<!-- Tooltip -->
 <div id="tooltip">
   <div class="tt-title" id="tt-title"></div>
   <div class="tt-row">Fill: <span class="tt-val" id="tt-pct"></span></div>
@@ -194,10 +226,10 @@
   <div class="tt-row">Status: <span class="tt-val" id="tt-status"></span></div>
 </div>
 
-<!-- Control panel -->
 <div id="control-panel">
 
-  <div class="sliders-row">
+  <!-- Sliders + collapse button always visible -->
+  <div id="panel-header">
     <div class="slider-group">
       <div class="slider-label">
         <span class="lbl">Year</span>
@@ -218,83 +250,94 @@
         <span>30k</span><span>45k</span><span>60k</span><span>75k</span><span>90k</span>
       </div>
     </div>
+    <button id="collapse-btn" title="Toggle cell details">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="2,8.5 6.5,4 11,8.5"/>
+      </svg>
+      <span class="btn-label">Minimise</span>
+    </button>
   </div>
 
-  <div class="cells-row">
-    <div class="cell-card" id="card-C1">
-      <div class="cell-header">
-        <div class="cell-name">Cell 1 — NW</div>
-        <div class="status-badge" id="badge-C1">CLOSED</div>
+  <!-- Collapsible: cell cards + summary -->
+  <div id="collapsible">
+    <div id="collapsible-inner">
+      <div class="cells-row">
+        <div class="cell-card" id="card-C1">
+          <div class="cell-header">
+            <div class="cell-name">Cell 1 — NW</div>
+            <div class="status-badge" id="badge-C1">CLOSED</div>
+          </div>
+          <div class="progress-bg"><div class="progress-fill" id="bar-C1"></div></div>
+          <div class="cell-footer">
+            <span class="cell-pct" id="pct-C1">100%</span>
+            <span class="cell-meta" id="meta-C1">Capped 2019</span>
+          </div>
+        </div>
+        <div class="cell-card" id="card-C2">
+          <div class="cell-header">
+            <div class="cell-name">Cell 2 — Centre</div>
+            <div class="status-badge" id="badge-C2">ACTIVE</div>
+          </div>
+          <div class="progress-bg"><div class="progress-fill" id="bar-C2"></div></div>
+          <div class="cell-footer">
+            <span class="cell-pct" id="pct-C2">—</span>
+            <span class="cell-meta" id="meta-C2"></span>
+          </div>
+        </div>
+        <div class="cell-card" id="card-C3">
+          <div class="cell-header">
+            <div class="cell-name">Cell 3 — SW</div>
+            <div class="status-badge" id="badge-C3">FUTURE</div>
+          </div>
+          <div class="progress-bg"><div class="progress-fill" id="bar-C3"></div></div>
+          <div class="cell-footer">
+            <span class="cell-pct" id="pct-C3">—</span>
+            <span class="cell-meta" id="meta-C3"></span>
+          </div>
+        </div>
+        <div class="cell-card" id="card-C4">
+          <div class="cell-header">
+            <div class="cell-name">Cell 4 — East</div>
+            <div class="status-badge" id="badge-C4">FUTURE</div>
+          </div>
+          <div class="progress-bg"><div class="progress-fill" id="bar-C4"></div></div>
+          <div class="cell-footer">
+            <span class="cell-pct" id="pct-C4">—</span>
+            <span class="cell-meta" id="meta-C4"></span>
+          </div>
+        </div>
       </div>
-      <div class="progress-bg"><div class="progress-fill" id="bar-C1"></div></div>
-      <div class="cell-footer">
-        <span class="cell-pct" id="pct-C1">100%</span>
-        <span class="cell-meta" id="meta-C1">Capped 2019</span>
-      </div>
-    </div>
-    <div class="cell-card" id="card-C2">
-      <div class="cell-header">
-        <div class="cell-name">Cell 2 — Centre</div>
-        <div class="status-badge" id="badge-C2">ACTIVE</div>
-      </div>
-      <div class="progress-bg"><div class="progress-fill" id="bar-C2"></div></div>
-      <div class="cell-footer">
-        <span class="cell-pct" id="pct-C2">—</span>
-        <span class="cell-meta" id="meta-C2"></span>
-      </div>
-    </div>
-    <div class="cell-card" id="card-C3">
-      <div class="cell-header">
-        <div class="cell-name">Cell 3 — SW</div>
-        <div class="status-badge" id="badge-C3">FUTURE</div>
-      </div>
-      <div class="progress-bg"><div class="progress-fill" id="bar-C3"></div></div>
-      <div class="cell-footer">
-        <span class="cell-pct" id="pct-C3">—</span>
-        <span class="cell-meta" id="meta-C3"></span>
-      </div>
-    </div>
-    <div class="cell-card" id="card-C4">
-      <div class="cell-header">
-        <div class="cell-name">Cell 4 — East</div>
-        <div class="status-badge" id="badge-C4">FUTURE</div>
-      </div>
-      <div class="progress-bg"><div class="progress-fill" id="bar-C4"></div></div>
-      <div class="cell-footer">
-        <span class="cell-pct" id="pct-C4">—</span>
-        <span class="cell-meta" id="meta-C4"></span>
-      </div>
-    </div>
-  </div>
 
-  <div id="summary-bar">
-    <div class="summ-item">
-      <div class="summ-label">Airspace Consumed</div>
-      <div class="summ-value" id="s-consumed">—</div>
-    </div>
-    <div class="summ-divider"></div>
-    <div class="summ-item">
-      <div class="summ-label">Total Site Capacity</div>
-      <div class="summ-value">1,970,000 m³</div>
-    </div>
-    <div class="summ-divider"></div>
-    <div class="summ-item">
-      <div class="summ-label">Overall Fill</div>
-      <div class="summ-value" id="s-overall">—</div>
-    </div>
-    <div class="summ-divider"></div>
-    <div class="summ-item">
-      <div class="summ-label">Active Cell Closes</div>
-      <div class="summ-value" id="s-active-closes">—</div>
-    </div>
-    <div class="summ-divider"></div>
-    <div class="summ-item">
-      <div class="summ-label">Site Life Remaining</div>
-      <div class="summ-value" id="s-site-life">—</div>
-    </div>
-  </div>
+      <div id="summary-bar">
+        <div class="summ-item">
+          <div class="summ-label">Airspace Consumed</div>
+          <div class="summ-value" id="s-consumed">—</div>
+        </div>
+        <div class="summ-divider"></div>
+        <div class="summ-item">
+          <div class="summ-label">Total Site Capacity</div>
+          <div class="summ-value">1,970,000 m³</div>
+        </div>
+        <div class="summ-divider"></div>
+        <div class="summ-item">
+          <div class="summ-label">Overall Fill</div>
+          <div class="summ-value" id="s-overall">—</div>
+        </div>
+        <div class="summ-divider"></div>
+        <div class="summ-item">
+          <div class="summ-label">Active Cell Closes</div>
+          <div class="summ-value" id="s-active-closes">—</div>
+        </div>
+        <div class="summ-divider"></div>
+        <div class="summ-item">
+          <div class="summ-label">Site Life Remaining</div>
+          <div class="summ-value" id="s-site-life">—</div>
+        </div>
+      </div>
+    </div><!-- /collapsible-inner -->
+  </div><!-- /collapsible -->
 
-</div>
+</div><!-- /control-panel -->
 
 <script>
 'use strict';
@@ -309,11 +352,19 @@ const COL_RADIUS    = 12;
 const H_SCALE       = 0.0015;
 const ANIM_DURATION = 600;
 
+// Cell positions calibrated against Google Earth satellite imagery.
+// North part of site = NW closed cell; main central waste mass = C2;
+// southern excavated pad = C3 SW; eastern developed plateau = C4.
+// Fine-tune lat/lon here if you have survey-accurate centroids.
 const CELLS = [
-  { id:'C1', name:'Cell 1 — NW',     cap:320000, opened:2012, closed:2019, lat:-36.02850, lon:146.88850, radius:80  },
-  { id:'C2', name:'Cell 2 — Centre', cap:480000, opened:2019, closed:2027, lat:-36.02960, lon:146.88990, radius:100 },
-  { id:'C3', name:'Cell 3 — SW',     cap:550000, opened:2027, closed:2034, lat:-36.03100, lon:146.88870, radius:95  },
-  { id:'C4', name:'Cell 4 — East',   cap:620000, opened:2034, closed:2042, lat:-36.02980, lon:146.89150, radius:90  },
+  { id:'C1', name:'Cell 1 — NW',     cap:320000, opened:2012, closed:2019,
+    lat:-36.02785, lon:146.88845, radius:78 },
+  { id:'C2', name:'Cell 2 — Centre', cap:480000, opened:2019, closed:2027,
+    lat:-36.02950, lon:146.88905, radius:105 },
+  { id:'C3', name:'Cell 3 — SW',     cap:550000, opened:2027, closed:2034,
+    lat:-36.03095, lon:146.88820, radius:90 },
+  { id:'C4', name:'Cell 4 — East',   cap:620000, opened:2034, closed:2042,
+    lat:-36.02920, lon:146.89120, radius:85 },
 ];
 
 const M_PER_DEG_LAT = 111000;
@@ -330,7 +381,7 @@ const MAP_STYLE = {
       type: 'raster',
       tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
       tileSize: 256,
-      attribution: '© Esri, Maxar, Earthstar Geographics, GIS User Community',
+      attribution: '© Esri, Maxar, Earthstar Geographics',
       maxzoom: 19,
     },
     'esri-labels': {
@@ -347,7 +398,7 @@ const MAP_STYLE = {
 };
 
 // ═══════════════════════════════════════════════════════════
-// COLUMN GRID GENERATION
+// COLUMN GRID
 // ═══════════════════════════════════════════════════════════
 
 function buildColumnGrid(cell) {
@@ -377,9 +428,9 @@ CELLS.forEach(c => { CELL_COLS[c.id] = buildColumnGrid(c); });
 // ═══════════════════════════════════════════════════════════
 
 function calcFill(cell, year, intake) {
-  const annualVol  = intake / COMPACTION;
+  const annualVol   = intake / COMPACTION;
   const yearsActive = Math.max(0, Math.min(year, cell.closed) - cell.opened);
-  const filled     = Math.min(cell.cap, yearsActive * annualVol);
+  const filled      = Math.min(cell.cap, yearsActive * annualVol);
   return { filled, pct: (filled / cell.cap) * 100 };
 }
 
@@ -410,8 +461,8 @@ function barHex(pct) {
 let animFrame = null, animStart = null;
 let fromH = {}, toH = {}, currentH = {};
 
-function lerp(a, b, t)  { return a + (b - a) * t; }
-function easeInOut(t)   { return t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t; }
+const lerp       = (a, b, t) => a + (b - a) * t;
+const easeInOut  = t => t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t;
 
 function targetHeights(year, intake) {
   const h = {};
@@ -431,8 +482,7 @@ function kickAnimation(newTo) {
       ? Float32Array.from(currentH[c.id])
       : new Float32Array(CELL_COLS[c.id].length).fill(0.8);
   });
-  toH = newTo;
-  animStart = null;
+  toH = newTo; animStart = null;
   animFrame = requestAnimationFrame(animTick);
 }
 
@@ -520,12 +570,11 @@ function updateUI() {
   let totalConsumed = 0;
   CELLS.forEach(cell => {
     const { filled, pct } = calcFill(cell, currentYear, currentIntake);
-    const status    = cellStatus(cell, currentYear);
-    const clampPct  = Math.min(100, Math.max(0, pct));
-    totalConsumed  += filled;
+    const status   = cellStatus(cell, currentYear);
+    const clampPct = Math.min(100, Math.max(0, pct));
+    totalConsumed += filled;
 
     document.getElementById(`card-${cell.id}`).classList.toggle('is-active', status === 'ACTIVE');
-
     const badge = document.getElementById(`badge-${cell.id}`);
     badge.textContent = status;
     badge.className   = 'status-badge badge-' + status.toLowerCase();
@@ -533,7 +582,6 @@ function updateUI() {
     const bar = document.getElementById(`bar-${cell.id}`);
     bar.style.width           = clampPct.toFixed(2) + '%';
     bar.style.backgroundColor = barHex(pct);
-
     document.getElementById(`pct-${cell.id}`).textContent = clampPct.toFixed(1) + '%';
 
     const meta = document.getElementById(`meta-${cell.id}`);
@@ -548,8 +596,8 @@ function updateUI() {
   });
 
   const totalCap = CELLS.reduce((s, c) => s + c.cap, 0);
-  document.getElementById('s-consumed').textContent  = (totalConsumed / 1000).toFixed(0) + 'k m³';
-  document.getElementById('s-overall').textContent   = (totalConsumed / totalCap * 100).toFixed(1) + '%';
+  document.getElementById('s-consumed').textContent = (totalConsumed / 1000).toFixed(0) + 'k m³';
+  document.getElementById('s-overall').textContent  = (totalConsumed / totalCap * 100).toFixed(1) + '%';
 
   const activeCell = CELLS.find(c => cellStatus(c, currentYear) === 'ACTIVE');
   if (activeCell) {
@@ -561,19 +609,34 @@ function updateUI() {
     document.getElementById('s-active-closes').textContent = '—';
   }
 
-  const siteRem = CELLS[CELLS.length - 1].closed - currentYear;
+  const siteRem = CELLS[CELLS.length-1].closed - currentYear;
   document.getElementById('s-site-life').textContent =
     siteRem > 0 ? siteRem + ' yrs (est. ' + CELLS[CELLS.length-1].closed + ')' : 'Site capacity reached';
 }
 
 // ═══════════════════════════════════════════════════════════
-// MAP INIT  —  MapLibre GL JS, no API key required
+// COLLAPSE TOGGLE
+// ═══════════════════════════════════════════════════════════
+
+const panel      = document.getElementById('control-panel');
+const collapseBtn = document.getElementById('collapse-btn');
+const btnLabel   = collapseBtn.querySelector('.btn-label');
+let collapsed    = false;
+
+collapseBtn.addEventListener('click', () => {
+  collapsed = !collapsed;
+  panel.classList.toggle('collapsed', collapsed);
+  btnLabel.textContent = collapsed ? 'Expand' : 'Minimise';
+});
+
+// ═══════════════════════════════════════════════════════════
+// MAP INIT
 // ═══════════════════════════════════════════════════════════
 
 const map = new maplibregl.Map({
   container: 'map',
   style:     MAP_STYLE,
-  center:    [146.88996, -36.02969],
+  center:    [146.88990, -36.02960],
   zoom:       15.5,
   pitch:      50,
   bearing:   -20,
@@ -586,14 +649,13 @@ map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
 map.on('load', () => {
   deckOverlay = new deck.MapboxOverlay({ interleaved: false, layers: [] });
   map.addControl(deckOverlay);
-
   currentH = targetHeights(currentYear, currentIntake);
   renderColumns();
   updateUI();
 });
 
 // ═══════════════════════════════════════════════════════════
-// SLIDER HANDLERS
+// SLIDERS
 // ═══════════════════════════════════════════════════════════
 
 document.getElementById('year-slider').addEventListener('input', e => {
