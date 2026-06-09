@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AWMC Landfill Cell Filling Plan — 3D Visualiser</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+  <script src="https://unpkg.com/deck.gl@8.9/dist.min.js"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+      background: #0a0c11;
+      overflow: hidden;
+      color: #fff;
+    }
+
+    #map { width: 100vw; height: 100vh; }
+
+    /* ── No-token splash ── */
+    #no-token-overlay {
+      position: fixed; inset: 0; z-index: 600;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(8, 10, 16, 0.94);
+      transition: opacity 0.4s ease;
+    }
+    #no-token-overlay.hidden { opacity: 0; pointer-events: none; }
+    .splash-box {
+      text-align: center;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 18px;
+      padding: 36px 48px;
+      max-width: 400px;
+    }
+    .splash-box svg { opacity: 0.4; margin-bottom: 16px; }
+    .splash-box h2 { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+    .splash-box p { color: rgba(255,255,255,0.5); font-size: 13px; line-height: 1.6; }
+    .splash-arrow {
+      display: inline-block; margin-top: 16px;
+      color: rgba(255,255,255,0.35); font-size: 12px;
+      animation: bob 1.4s ease-in-out infinite;
+    }
+    @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+
+    /* ── Title panel (top-left) ── */
+    #title-panel {
+      position: fixed; top: 16px; left: 16px; z-index: 500;
+      background: rgba(12, 14, 20, 0.82);
+      backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 13px 18px;
+    }
+    #title-panel h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; }
+    #title-panel p  { color: rgba(255,255,255,0.45); font-size: 11px; margin-top: 2px; }
+
+    /* ── Token panel (top-right) ── */
+    #token-panel {
+      position: fixed; top: 16px; right: 16px; z-index: 500;
+      background: rgba(12, 14, 20, 0.82);
+      backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 10px 14px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    #token-panel label {
+      color: rgba(255,255,255,0.55); font-size: 11px;
+      white-space: nowrap; text-transform: uppercase; letter-spacing: 0.4px;
+    }
+    #token-input {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 7px; color: #fff;
+      font-size: 12px; padding: 6px 11px; width: 230px; outline: none;
+      transition: border-color 0.2s;
+    }
+    #token-input:focus { border-color: rgba(99,179,255,0.55); }
+    #token-btn {
+      background: rgba(99,179,255,0.15);
+      border: 1px solid rgba(99,179,255,0.35);
+      border-radius: 7px; color: #7dc5ff;
+      font-size: 12px; font-weight: 600; padding: 6px 14px;
+      cursor: pointer; white-space: nowrap; transition: background 0.2s;
+    }
+    #token-btn:hover { background: rgba(99,179,255,0.28); }
+
+    /* ── Legend (top-left below title) ── */
+    #legend {
+      position: fixed; top: 88px; left: 16px; z-index: 500;
+      background: rgba(12,14,20,0.78);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 12px; padding: 11px 14px;
+      display: flex; flex-direction: column; gap: 7px;
+    }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; color: rgba(255,255,255,0.55); }
+    .legend-swatch { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+
+    /* ── Bottom control panel ── */
+    #control-panel {
+      position: fixed;
+      bottom: 20px; left: 50%; transform: translateX(-50%);
+      z-index: 500;
+      background: rgba(11, 13, 19, 0.84);
+      backdrop-filter: blur(26px); -webkit-backdrop-filter: blur(26px);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 20px;
+      padding: 20px 22px 18px;
+      width: min(980px, calc(100vw - 24px));
+    }
+
+    /* Sliders */
+    .sliders-row {
+      display: flex; gap: 28px; margin-bottom: 18px; align-items: flex-end;
+    }
+    .slider-group { flex: 1; }
+    .slider-label {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 9px;
+    }
+    .slider-label .lbl {
+      color: rgba(255,255,255,0.5); font-size: 10px;
+      text-transform: uppercase; letter-spacing: 0.6px;
+    }
+    .slider-label .val {
+      color: #fff; font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums;
+    }
+    .slider-track-wrap { position: relative; }
+    input[type=range] {
+      -webkit-appearance: none; width: 100%; height: 4px;
+      border-radius: 2px; background: rgba(255,255,255,0.14); outline: none; cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+      background: #fff; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    }
+    input[type=range]::-moz-range-thumb {
+      width: 20px; height: 20px; border-radius: 50%; background: #fff;
+      cursor: pointer; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    }
+    .slider-ticks {
+      display: flex; justify-content: space-between;
+      margin-top: 5px; padding: 0 1px;
+    }
+    .slider-ticks span {
+      color: rgba(255,255,255,0.25); font-size: 10px; font-variant-numeric: tabular-nums;
+    }
+
+    /* Cell cards */
+    .cells-row {
+      display: grid; grid-template-columns: repeat(4,1fr); gap: 10px;
+      margin-bottom: 14px;
+    }
+    .cell-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 11px; padding: 11px 13px;
+      transition: border-color 0.3s;
+    }
+    .cell-card.is-active {
+      border-color: rgba(99,179,255,0.35);
+      background: rgba(99,179,255,0.05);
+    }
+    .cell-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-bottom: 9px;
+    }
+    .cell-name { color: #fff; font-size: 12px; font-weight: 600; }
+    .status-badge {
+      font-size: 9px; font-weight: 800; letter-spacing: 0.7px;
+      padding: 2px 7px; border-radius: 4px; text-transform: uppercase;
+    }
+    .badge-active   { background: rgba(80,210,80,0.18);  color: #6dce6d; border: 1px solid rgba(80,210,80,0.3); }
+    .badge-closed   { background: rgba(160,160,160,0.15);color: #aaa;    border: 1px solid rgba(160,160,160,0.25); }
+    .badge-future   { background: rgba(99,160,255,0.18); color: #8ab6ff; border: 1px solid rgba(99,160,255,0.3); }
+
+    .progress-bg {
+      background: rgba(255,255,255,0.09); border-radius: 4px;
+      height: 6px; overflow: hidden; margin-bottom: 7px;
+    }
+    .progress-fill {
+      height: 100%; border-radius: 4px;
+      transition: width 0.5s ease, background-color 0.5s ease;
+    }
+    .cell-footer {
+      display: flex; justify-content: space-between; align-items: baseline;
+    }
+    .cell-pct  { color: #fff; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .cell-meta { color: rgba(255,255,255,0.4); font-size: 10px; }
+
+    /* Summary bar */
+    #summary-bar {
+      display: flex; align-items: center; gap: 0;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      padding-top: 13px;
+      flex-wrap: wrap; row-gap: 6px;
+    }
+    .summ-item { flex: 1; min-width: 0; padding: 0 14px; }
+    .summ-item:first-child { padding-left: 0; }
+    .summ-item:last-child  { padding-right: 0; }
+    .summ-divider {
+      width: 1px; height: 28px; background: rgba(255,255,255,0.08); flex-shrink: 0;
+    }
+    .summ-label { color: rgba(255,255,255,0.4); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+    .summ-value { color: #fff; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .summ-value .accent { color: rgba(255,255,255,0.45); font-weight: 400; }
+
+    /* Tooltip */
+    #tooltip {
+      position: fixed; z-index: 700; pointer-events: none;
+      background: rgba(12,14,20,0.92);
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px; padding: 10px 14px;
+      font-size: 12px; line-height: 1.5;
+      opacity: 0; transition: opacity 0.15s;
+      max-width: 200px;
+    }
+    #tooltip.visible { opacity: 1; }
+    #tooltip .tt-title { font-weight: 700; margin-bottom: 4px; }
+    #tooltip .tt-row   { color: rgba(255,255,255,0.6); }
+    #tooltip .tt-val   { color: #fff; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<!-- No-token splash -->
+<div id="no-token-overlay">
+  <div class="splash-box">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
+      <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    </svg>
+    <h2>Mapbox Token Required</h2>
+    <p>Paste your Mapbox public access token in the field at the top right, then click <strong>Apply</strong>.</p>
+    <span class="splash-arrow">↑ top-right corner</span>
+  </div>
+</div>
+
+<!-- Title -->
+<div id="title-panel">
+  <h1>AWMC Landfill Cell Plan</h1>
+  <p>Lavington NSW — 3D Fill Visualiser</p>
+</div>
+
+<!-- Token input -->
+<div id="token-panel">
+  <label for="token-input">Mapbox Token</label>
+  <input type="password" id="token-input" placeholder="pk.eyJ1Ijoiy…" autocomplete="off" spellcheck="false">
+  <button id="token-btn">Apply</button>
+</div>
+
+<!-- Legend -->
+<div id="legend">
+  <div class="legend-item"><div class="legend-swatch" style="background:rgba(96,153,34,0.85)"></div> Empty / Future</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:rgba(250,199,117,0.9)"></div> Filling (0–60%)</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:rgba(226,75,74,0.9)"></div> Nearly Full (61–85%)</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:rgba(136,135,128,0.9)"></div> Capped / Closed</div>
+</div>
+
+<!-- Tooltip -->
+<div id="tooltip">
+  <div class="tt-title" id="tt-title"></div>
+  <div class="tt-row">Fill: <span class="tt-val" id="tt-pct"></span></div>
+  <div class="tt-row">Volume: <span class="tt-val" id="tt-vol"></span></div>
+  <div class="tt-row">Status: <span class="tt-val" id="tt-status"></span></div>
+</div>
+
+<!-- Control panel -->
+<div id="control-panel">
+
+  <div class="sliders-row">
+    <!-- Year slider -->
+    <div class="slider-group">
+      <div class="slider-label">
+        <span class="lbl">Year</span>
+        <span class="val" id="year-val">2025</span>
+      </div>
+      <div class="slider-track-wrap">
+        <input type="range" id="year-slider" min="2022" max="2040" value="2025" step="1">
+      </div>
+      <div class="slider-ticks">
+        <span>2022</span><span>2026</span><span>2030</span><span>2034</span><span>2038</span><span>2040</span>
+      </div>
+    </div>
+    <!-- Annual intake slider -->
+    <div class="slider-group">
+      <div class="slider-label">
+        <span class="lbl">Annual Intake</span>
+        <span class="val" id="intake-val">55,000 t/yr</span>
+      </div>
+      <div class="slider-track-wrap">
+        <input type="range" id="intake-slider" min="30000" max="90000" value="55000" step="1000">
+      </div>
+      <div class="slider-ticks">
+        <span>30k</span><span>45k</span><span>60k</span><span>75k</span><span>90k</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cell status cards -->
+  <div class="cells-row">
+    <div class="cell-card" id="card-C1">
+      <div class="cell-header">
+        <div class="cell-name">Cell 1 — NW</div>
+        <div class="status-badge" id="badge-C1">CLOSED</div>
+      </div>
+      <div class="progress-bg"><div class="progress-fill" id="bar-C1"></div></div>
+      <div class="cell-footer">
+        <span class="cell-pct" id="pct-C1">100%</span>
+        <span class="cell-meta" id="meta-C1">Capped 2019</span>
+      </div>
+    </div>
+    <div class="cell-card" id="card-C2">
+      <div class="cell-header">
+        <div class="cell-name">Cell 2 — Centre</div>
+        <div class="status-badge" id="badge-C2">ACTIVE</div>
+      </div>
+      <div class="progress-bg"><div class="progress-fill" id="bar-C2"></div></div>
+      <div class="cell-footer">
+        <span class="cell-pct" id="pct-C2">—</span>
+        <span class="cell-meta" id="meta-C2"></span>
+      </div>
+    </div>
+    <div class="cell-card" id="card-C3">
+      <div class="cell-header">
+        <div class="cell-name">Cell 3 — SW</div>
+        <div class="status-badge" id="badge-C3">FUTURE</div>
+      </div>
+      <div class="progress-bg"><div class="progress-fill" id="bar-C3"></div></div>
+      <div class="cell-footer">
+        <span class="cell-pct" id="pct-C3">—</span>
+        <span class="cell-meta" id="meta-C3"></span>
+      </div>
+    </div>
+    <div class="cell-card" id="card-C4">
+      <div class="cell-header">
+        <div class="cell-name">Cell 4 — East</div>
+        <div class="status-badge" id="badge-C4">FUTURE</div>
+      </div>
+      <div class="progress-bg"><div class="progress-fill" id="bar-C4"></div></div>
+      <div class="cell-footer">
+        <span class="cell-pct" id="pct-C4">—</span>
+        <span class="cell-meta" id="meta-C4"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary bar -->
+  <div id="summary-bar">
+    <div class="summ-item">
+      <div class="summ-label">Airspace Consumed</div>
+      <div class="summ-value" id="s-consumed">—</div>
+    </div>
+    <div class="summ-divider"></div>
+    <div class="summ-item">
+      <div class="summ-label">Total Site Capacity</div>
+      <div class="summ-value">1,970,000 m³</div>
+    </div>
+    <div class="summ-divider"></div>
+    <div class="summ-item">
+      <div class="summ-label">Overall Fill</div>
+      <div class="summ-value" id="s-overall">—</div>
+    </div>
+    <div class="summ-divider"></div>
+    <div class="summ-item">
+      <div class="summ-label">Active Cell Closes</div>
+      <div class="summ-value" id="s-active-closes">—</div>
+    </div>
+    <div class="summ-divider"></div>
+    <div class="summ-item">
+      <div class="summ-label">Site Life Remaining</div>
+      <div class="summ-value" id="s-site-life">—</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════
+// CONSTANTS & DATA
+// ═══════════════════════════════════════════════════════════
+
+const COMPACTION  = 0.82;   // t/m³
+const GRID_N      = 7;      // columns per side
+const COL_RADIUS  = 12;     // metres
+const H_SCALE     = 0.0015; // visual height scale (m³/col → metres)
+const ANIM_DURATION = 600;  // ms
+
+const CELLS = [
+  { id:'C1', name:'Cell 1 — NW',     cap:320000, opened:2012, closed:2019, lat:-36.02850, lon:146.88850, radius:80  },
+  { id:'C2', name:'Cell 2 — Centre', cap:480000, opened:2019, closed:2027, lat:-36.02960, lon:146.88990, radius:100 },
+  { id:'C3', name:'Cell 3 — SW',     cap:550000, opened:2027, closed:2034, lat:-36.03100, lon:146.88870, radius:95  },
+  { id:'C4', name:'Cell 4 — East',   cap:620000, opened:2034, closed:2042, lat:-36.02980, lon:146.89150, radius:90  },
+];
+
+// Degrees per metre at this latitude
+const LAT_CENTRE  = -36.03;
+const M_PER_DEG_LAT = 111000;
+const M_PER_DEG_LON = 111000 * Math.cos(LAT_CENTRE * Math.PI / 180); // ≈89800
+
+// ═══════════════════════════════════════════════════════════
+// COLUMN GRID GENERATION
+// ═══════════════════════════════════════════════════════════
+
+function buildColumnGrid(cell) {
+  const cols = [];
+  const spacing = (cell.radius * 1.85) / (GRID_N - 1);
+  const half = (GRID_N - 1) / 2;
+  for (let i = 0; i < GRID_N; i++) {
+    for (let j = 0; j < GRID_N; j++) {
+      const dx = (i - half) * spacing;
+      const dy = (j - half) * spacing;
+      if (Math.hypot(dx, dy) <= cell.radius * 0.93) {
+        cols.push([
+          cell.lon + dx / M_PER_DEG_LON,
+          cell.lat + dy / M_PER_DEG_LAT,
+        ]);
+      }
+    }
+  }
+  return cols;
+}
+
+const CELL_COLS = {};
+CELLS.forEach(c => { CELL_COLS[c.id] = buildColumnGrid(c); });
+
+// ═══════════════════════════════════════════════════════════
+// FILL & STATUS CALCULATIONS
+// ═══════════════════════════════════════════════════════════
+
+function calcFill(cell, year, annualIntake) {
+  const annualVol = annualIntake / COMPACTION;
+  const yearsActive = Math.max(0, Math.min(year, cell.closed) - cell.opened);
+  const filled = Math.min(cell.cap, yearsActive * annualVol);
+  const pct    = (filled / cell.cap) * 100;
+  return { filled, pct };
+}
+
+function cellStatus(cell, year) {
+  if (year >= cell.closed)  return 'CLOSED';
+  if (year >= cell.opened)  return 'ACTIVE';
+  return 'FUTURE';
+}
+
+function fillColor(pct) {
+  if (pct <= 0)  return [96, 153, 34,  200];   // green
+  if (pct <= 60) return [250,199, 117, 220];   // amber
+  if (pct <= 85) return [226,  75,  74, 220];   // red
+  return              [136, 135, 128, 220];    // gray (capped)
+}
+
+function barHex(pct) {
+  if (pct <= 0)  return '#609922';
+  if (pct <= 60) return '#fac775';
+  if (pct <= 85) return '#e24b4a';
+  return '#888780';
+}
+
+// ═══════════════════════════════════════════════════════════
+// ANIMATION STATE
+// ═══════════════════════════════════════════════════════════
+
+let animFrame  = null;
+let animStart  = null;
+let fromH      = {};    // cellId → Float32Array
+let toH        = {};
+let currentH   = {};
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+function easeInOut(t)   { return t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t; }
+
+function targetHeights(year, intake) {
+  const h = {};
+  CELLS.forEach(c => {
+    const { filled } = calcFill(c, year, intake);
+    const n = CELL_COLS[c.id].length;
+    const hEach = n > 0 ? Math.max(0.8, (filled / n) * H_SCALE) : 0.8;
+    h[c.id] = new Float32Array(n).fill(hEach);
+  });
+  return h;
+}
+
+function kickAnimation(newTo) {
+  if (animFrame) cancelAnimationFrame(animFrame);
+  fromH = {};
+  CELLS.forEach(c => {
+    const cur = currentH[c.id];
+    fromH[c.id] = cur ? Float32Array.from(cur) : new Float32Array(CELL_COLS[c.id].length).fill(0.8);
+  });
+  toH = newTo;
+  animStart = null;
+  animFrame = requestAnimationFrame(animTick);
+}
+
+function animTick(now) {
+  if (!animStart) animStart = now;
+  const elapsed = now - animStart;
+  const t  = Math.min(1, elapsed / ANIM_DURATION);
+  const et = easeInOut(t);
+
+  CELLS.forEach(c => {
+    const f = fromH[c.id], tgt = toH[c.id];
+    if (!f || !tgt) return;
+    const out = new Float32Array(f.length);
+    for (let i = 0; i < f.length; i++) out[i] = lerp(f[i], tgt[i], et);
+    currentH[c.id] = out;
+  });
+
+  renderColumns();
+
+  if (t < 1) {
+    animFrame = requestAnimationFrame(animTick);
+  } else {
+    animFrame = null;
+    currentH = toH;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// DECK.GL
+// ═══════════════════════════════════════════════════════════
+
+let deckOverlay = null;
+
+function buildLayerData() {
+  const rows = [];
+  CELLS.forEach(c => {
+    const cols  = CELL_COLS[c.id];
+    const h     = currentH[c.id] || new Float32Array(cols.length).fill(0.8);
+    const { pct } = calcFill(c, currentYear, currentIntake);
+    const color = fillColor(pct);
+    cols.forEach((pos, i) => {
+      rows.push({ position: pos, height: h[i], color, cellId: c.id });
+    });
+  });
+  return rows;
+}
+
+function renderColumns() {
+  if (!deckOverlay) return;
+  const data = buildLayerData();
+  deckOverlay.setProps({
+    layers: [
+      new deck.ColumnLayer({
+        id: 'landfill-cols',
+        data,
+        diskResolution:  6,
+        radius:          COL_RADIUS,
+        extruded:        true,
+        getPosition:     d => d.position,
+        getElevation:    d => d.height,
+        getFillColor:    d => d.color,
+        getLineColor:    [0, 0, 0, 60],
+        stroked:         false,
+        pickable:        true,
+        elevationScale:  1,
+        updateTriggers: {
+          getElevation: Date.now(),
+          getFillColor: currentYear,
+        },
+        onHover: info => handleHover(info),
+      })
+    ]
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// TOOLTIP
+// ═══════════════════════════════════════════════════════════
+
+const tooltip = document.getElementById('tooltip');
+
+function handleHover(info) {
+  if (!info || !info.object) {
+    tooltip.classList.remove('visible');
+    return;
+  }
+  const d    = info.object;
+  const cell = CELLS.find(c => c.id === d.cellId);
+  if (!cell) return;
+  const { filled, pct } = calcFill(cell, currentYear, currentIntake);
+  const status = cellStatus(cell, currentYear);
+
+  document.getElementById('tt-title').textContent  = cell.name;
+  document.getElementById('tt-pct').textContent    = pct.toFixed(1) + '%';
+  document.getElementById('tt-vol').textContent    = Math.round(filled).toLocaleString() + ' m³';
+  document.getElementById('tt-status').textContent = status;
+
+  tooltip.style.left = (info.x + 14) + 'px';
+  tooltip.style.top  = (info.y - 10) + 'px';
+  tooltip.classList.add('visible');
+}
+
+// ═══════════════════════════════════════════════════════════
+// UI UPDATE
+// ═══════════════════════════════════════════════════════════
+
+let currentYear   = 2025;
+let currentIntake = 55000;
+
+function updateUI() {
+  const year   = currentYear;
+  const intake = currentIntake;
+
+  let totalConsumed = 0;
+
+  CELLS.forEach(cell => {
+    const { filled, pct } = calcFill(cell, year, intake);
+    const status = cellStatus(cell, year);
+    const clampPct = Math.min(100, Math.max(0, pct));
+    totalConsumed += filled;
+
+    // Card highlight
+    const card = document.getElementById(`card-${cell.id}`);
+    card.classList.toggle('is-active', status === 'ACTIVE');
+
+    // Badge
+    const badge = document.getElementById(`badge-${cell.id}`);
+    badge.textContent = status;
+    badge.className = 'status-badge badge-' + status.toLowerCase();
+
+    // Progress bar
+    const bar = document.getElementById(`bar-${cell.id}`);
+    bar.style.width           = clampPct.toFixed(2) + '%';
+    bar.style.backgroundColor = barHex(pct);
+
+    // Pct
+    document.getElementById(`pct-${cell.id}`).textContent = clampPct.toFixed(1) + '%';
+
+    // Meta line
+    const meta = document.getElementById(`meta-${cell.id}`);
+    if (status === 'ACTIVE') {
+      const annualVol = intake / COMPACTION;
+      const remaining = cell.cap - filled;
+      const yrsLeft   = annualVol > 0 ? remaining / annualVol : Infinity;
+      meta.textContent = yrsLeft.toFixed(1) + ' yrs remaining';
+    } else if (status === 'FUTURE') {
+      meta.textContent = 'Opens ' + cell.opened;
+    } else {
+      meta.textContent = 'Capped ' + cell.closed;
+    }
+  });
+
+  // Summary
+  const totalCap = CELLS.reduce((s, c) => s + c.cap, 0); // 1,970,000
+  document.getElementById('s-consumed').textContent =
+    (totalConsumed / 1000).toFixed(0) + 'k m³';
+  document.getElementById('s-overall').textContent =
+    (totalConsumed / totalCap * 100).toFixed(1) + '%';
+
+  const activeCell = CELLS.find(c => cellStatus(c, year) === 'ACTIVE');
+  if (activeCell) {
+    const annualVol = intake / COMPACTION;
+    const { filled } = calcFill(activeCell, year, intake);
+    const remaining  = activeCell.cap - filled;
+    const yrsLeft    = annualVol > 0 ? remaining / annualVol : Infinity;
+    const closeYear  = Math.round(year + yrsLeft);
+    document.getElementById('s-active-closes').textContent =
+      `~${closeYear} (${yrsLeft.toFixed(1)} yrs)`;
+  } else {
+    document.getElementById('s-active-closes').textContent = '—';
+  }
+
+  const lastCell = CELLS[CELLS.length - 1];
+  const siteEnd  = lastCell.closed;
+  const siteRem  = siteEnd - year;
+  document.getElementById('s-site-life').textContent =
+    siteRem > 0 ? siteRem + ' yrs (est. ' + siteEnd + ')' : 'Site capacity reached';
+}
+
+// ═══════════════════════════════════════════════════════════
+// MAP INITIALISATION
+// ═══════════════════════════════════════════════════════════
+
+let map     = null;
+let mapReady = false;
+
+function initMap(token) {
+  if (map) return; // already initialised
+
+  mapboxgl.accessToken = token;
+  map = new mapboxgl.Map({
+    container: 'map',
+    style:     'mapbox://styles/mapbox/satellite-streets-v12',
+    center:    [146.88996, -36.02969],
+    zoom:       15.5,
+    pitch:      50,
+    bearing:   -20,
+    antialias:  true,
+  });
+
+  map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+
+  map.on('load', () => {
+    deckOverlay = new deck.MapboxOverlay({
+      interleaved: false,
+      layers: [],
+    });
+    map.addControl(deckOverlay);
+
+    // Boot up with target heights (no animation from nothing)
+    const initH = targetHeights(currentYear, currentIntake);
+    currentH = initH;
+    renderColumns();
+    updateUI();
+    mapReady = true;
+
+    const overlay = document.getElementById('no-token-overlay');
+    overlay.classList.add('hidden');
+    setTimeout(() => overlay.style.display = 'none', 450);
+  });
+
+  map.on('error', e => {
+    console.warn('Mapbox error:', e);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// SLIDER EVENT HANDLERS
+// ═══════════════════════════════════════════════════════════
+
+document.getElementById('year-slider').addEventListener('input', e => {
+  currentYear = parseInt(e.target.value, 10);
+  document.getElementById('year-val').textContent = currentYear;
+  if (mapReady) kickAnimation(targetHeights(currentYear, currentIntake));
+  updateUI();
+});
+
+document.getElementById('intake-slider').addEventListener('input', e => {
+  currentIntake = parseInt(e.target.value, 10);
+  document.getElementById('intake-val').textContent =
+    currentIntake.toLocaleString() + ' t/yr';
+  if (mapReady) kickAnimation(targetHeights(currentYear, currentIntake));
+  updateUI();
+});
+
+// ═══════════════════════════════════════════════════════════
+// TOKEN HANDLING
+// ═══════════════════════════════════════════════════════════
+
+function applyToken() {
+  const raw = document.getElementById('token-input').value.trim();
+  if (!raw) return;
+  if (!raw.startsWith('pk.')) {
+    alert('That doesn\'t look like a Mapbox public token (should start with "pk.").');
+    return;
+  }
+  sessionStorage.setItem('mapbox_token', raw);
+  initMap(raw);
+}
+
+document.getElementById('token-btn').addEventListener('click', applyToken);
+document.getElementById('token-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') applyToken();
+});
+
+// Restore session token
+const saved = sessionStorage.getItem('mapbox_token');
+if (saved) {
+  document.getElementById('token-input').value = saved;
+  initMap(saved);
+}
+
+// Initialise UI labels even before map loads
+updateUI();
+</script>
+</body>
+</html>
