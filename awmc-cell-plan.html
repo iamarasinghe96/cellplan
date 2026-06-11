@@ -12,21 +12,20 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
-      background: #0a0c11;
-      overflow: hidden;
-      color: #fff;
+      background: #0a0c11; overflow: hidden; color: #fff;
     }
-
     #map { width: 100vw; height: 100vh; }
 
-    /* ── Title panel ── */
-    #title-panel {
-      position: fixed; top: 16px; left: 16px; z-index: 500;
+    /* ── Shared glass surface ── */
+    .glass {
       background: rgba(12,14,20,0.82);
       backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);
       border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 14px; padding: 13px 18px;
+      border-radius: 14px;
     }
+
+    /* ── Title ── */
+    #title-panel { position: fixed; top: 16px; left: 16px; z-index: 500; padding: 13px 18px; }
     #title-panel h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; }
     #title-panel p  { color: rgba(255,255,255,0.45); font-size: 11px; margin-top: 2px; }
 
@@ -42,6 +41,148 @@
     .legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; color: rgba(255,255,255,0.55); }
     .legend-swatch { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
 
+    /* ── Edit Mode toggle button (top-right) ── */
+    #edit-mode-btn {
+      position: fixed; top: 16px; right: 16px; z-index: 600;
+      background: rgba(12,14,20,0.82);
+      backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 11px; padding: 9px 16px;
+      color: rgba(255,255,255,0.65); font-size: 12px; font-weight: 600;
+      cursor: pointer; display: flex; align-items: center; gap: 8px;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+    }
+    #edit-mode-btn:hover { background: rgba(255,165,0,0.12); border-color: rgba(255,165,0,0.35); color: #ffb347; }
+    #edit-mode-btn.active {
+      background: rgba(255,145,0,0.18); border-color: rgba(255,145,0,0.55);
+      color: #ffb347;
+    }
+    #edit-mode-btn svg { flex-shrink: 0; }
+
+    /* ── Editor panel (right-side drawer) ── */
+    #editor-panel {
+      position: fixed; top: 0; right: 0; bottom: 0; z-index: 590;
+      width: 290px;
+      background: rgba(10,12,18,0.93);
+      backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
+      border-left: 1px solid rgba(255,255,255,0.09);
+      transform: translateX(100%);
+      transition: transform 0.36s cubic-bezier(0.4,0,0.2,1);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    #editor-panel.open { transform: translateX(0); }
+
+    .ep-header {
+      padding: 56px 18px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      flex-shrink: 0;
+    }
+    .ep-title { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+    .ep-hint  {
+      font-size: 10px; color: rgba(255,255,255,0.38);
+      letter-spacing: 0.3px;
+    }
+
+    /* Global scale row */
+    .ep-global {
+      padding: 12px 18px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      flex-shrink: 0;
+    }
+    .ep-row-label {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 8px;
+    }
+    .ep-row-label .lbl { color: rgba(255,255,255,0.45); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .ep-row-label .val { color: #fff; font-size: 13px; font-weight: 700; }
+
+    /* Scrollable cell rows */
+    #editor-cells {
+      flex: 1; overflow-y: auto; padding: 10px 18px;
+      scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent;
+    }
+    #editor-cells::-webkit-scrollbar { width: 4px; }
+    #editor-cells::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+    .ed-cell-row {
+      margin-bottom: 18px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .ed-cell-row:last-child { border-bottom: none; margin-bottom: 0; }
+
+    .ed-cell-header {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 9px;
+    }
+    .ed-dot {
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    }
+    .ed-cell-name { font-size: 12px; font-weight: 700; }
+
+    .ed-coords {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px;
+      margin-bottom: 10px;
+    }
+    .ed-coord-item {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 7px; padding: 6px 8px;
+    }
+    .ed-coord-lbl { display: block; color: rgba(255,255,255,0.4); font-size: 9px; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 2px; }
+    .ed-coord-val { display: block; color: #fff; font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; word-break: break-all; }
+
+    .ed-slider-label {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 6px;
+    }
+    .ed-slider-label .lbl { color: rgba(255,255,255,0.4); font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .ed-slider-label .val { color: #ffb347; font-size: 12px; font-weight: 700; }
+
+    /* Range slider (shared style) */
+    input[type=range] {
+      -webkit-appearance: none; width: 100%; height: 4px;
+      border-radius: 2px; background: rgba(255,255,255,0.14); outline: none; cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
+      background: #fff; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    }
+    input[type=range]::-moz-range-thumb {
+      width: 18px; height: 18px; border-radius: 50%; background: #fff;
+      cursor: pointer; border: none; box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    }
+    .ed-slider { width: 100%; }
+
+    /* Copy config button */
+    .ep-footer {
+      padding: 14px 18px;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      flex-shrink: 0;
+    }
+    #copy-config-btn {
+      width: 100%; padding: 10px;
+      background: rgba(99,179,255,0.15); border: 1px solid rgba(99,179,255,0.35);
+      border-radius: 9px; color: #7dc5ff; font-size: 12px; font-weight: 700;
+      cursor: pointer; transition: background 0.2s, border-color 0.2s, color 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+    }
+    #copy-config-btn:hover { background: rgba(99,179,255,0.28); }
+
+    /* ── Draggable cell markers ── */
+    .cell-edit-marker {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--mc, #888);
+      border: 3px solid rgba(255,255,255,0.9);
+      box-shadow: 0 3px 12px rgba(0,0,0,0.6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 900; color: rgba(0,0,0,0.75);
+      cursor: grab; user-select: none;
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+    .cell-edit-marker:active { cursor: grabbing; transform: scale(1.15); box-shadow: 0 6px 20px rgba(0,0,0,0.7); }
+
     /* ── Bottom control panel ── */
     #control-panel {
       position: fixed;
@@ -53,9 +194,13 @@
       border-radius: 20px;
       padding: 18px 22px 16px;
       width: min(980px, calc(100vw - 24px));
+      transition: width 0.35s ease;
+    }
+    #control-panel.editor-open {
+      width: min(980px, calc(100vw - 320px));
+      left: calc(50% - 145px);
     }
 
-    /* ── Collapse toggle ── */
     #panel-header {
       display: flex; align-items: flex-end; gap: 28px;
       margin-bottom: 16px;
@@ -66,115 +211,56 @@
       flex-shrink: 0;
       background: rgba(255,255,255,0.07);
       border: 1px solid rgba(255,255,255,0.14);
-      border-radius: 8px;
-      color: rgba(255,255,255,0.55);
-      cursor: pointer;
-      padding: 7px 12px;
+      border-radius: 8px; color: rgba(255,255,255,0.55);
+      cursor: pointer; padding: 7px 12px;
       display: flex; align-items: center; gap: 6px;
       font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
       transition: background 0.2s, color 0.2s;
-      white-space: nowrap;
-      margin-bottom: 1px;
+      white-space: nowrap; margin-bottom: 1px;
     }
     #collapse-btn:hover { background: rgba(255,255,255,0.13); color: #fff; }
-    #collapse-btn svg {
-      transition: transform 0.35s ease;
-    }
-    #control-panel.collapsed #collapse-btn svg {
-      transform: rotate(180deg);
-    }
-    #collapse-btn .btn-label { display: inline; }
+    #collapse-btn svg { transition: transform 0.35s ease; }
+    #control-panel.collapsed #collapse-btn svg { transform: rotate(180deg); }
 
-    /* ── Collapsible section ── */
     #collapsible {
-      display: grid;
-      grid-template-rows: 1fr;
+      display: grid; grid-template-rows: 1fr;
       transition: grid-template-rows 0.38s ease, opacity 0.3s ease;
-      opacity: 1;
-      overflow: hidden;
+      opacity: 1; overflow: hidden;
     }
-    #control-panel.collapsed #collapsible {
-      grid-template-rows: 0fr;
-      opacity: 0;
-    }
+    #control-panel.collapsed #collapsible { grid-template-rows: 0fr; opacity: 0; }
     #collapsible-inner { min-height: 0; overflow: hidden; }
 
-    /* Sliders */
     .slider-group { }
     .slider-label {
       display: flex; justify-content: space-between; align-items: baseline;
       margin-bottom: 9px;
     }
-    .slider-label .lbl {
-      color: rgba(255,255,255,0.5); font-size: 10px;
-      text-transform: uppercase; letter-spacing: 0.6px;
-    }
-    .slider-label .val {
-      color: #fff; font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums;
-    }
-    input[type=range] {
-      -webkit-appearance: none; width: 100%; height: 4px;
-      border-radius: 2px; background: rgba(255,255,255,0.14); outline: none; cursor: pointer;
-    }
-    input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
-      background: #fff; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-    }
-    input[type=range]::-moz-range-thumb {
-      width: 20px; height: 20px; border-radius: 50%; background: #fff;
-      cursor: pointer; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-    }
-    .slider-ticks {
-      display: flex; justify-content: space-between;
-      margin-top: 5px; padding: 0 1px;
-    }
+    .slider-label .lbl { color: rgba(255,255,255,0.5); font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; }
+    .slider-label .val { color: #fff; font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .slider-ticks { display: flex; justify-content: space-between; margin-top: 5px; padding: 0 1px; }
     .slider-ticks span { color: rgba(255,255,255,0.25); font-size: 10px; font-variant-numeric: tabular-nums; }
 
-    /* Cell cards */
-    .cells-row {
-      display: grid; grid-template-columns: repeat(4,1fr); gap: 10px;
-      margin-bottom: 14px;
-    }
+    .cells-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 14px; }
     .cell-card {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 11px; padding: 11px 13px;
-      transition: border-color 0.3s, background 0.3s;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 11px; padding: 11px 13px; transition: border-color 0.3s, background 0.3s;
     }
-    .cell-card.is-active {
-      border-color: rgba(99,179,255,0.35);
-      background: rgba(99,179,255,0.05);
-    }
-    .cell-header {
-      display: flex; justify-content: space-between; align-items: flex-start;
-      margin-bottom: 9px;
-    }
+    .cell-card.is-active { border-color: rgba(99,179,255,0.35); background: rgba(99,179,255,0.05); }
+    .cell-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 9px; }
     .cell-name { color: #fff; font-size: 12px; font-weight: 600; }
-    .status-badge {
-      font-size: 9px; font-weight: 800; letter-spacing: 0.7px;
-      padding: 2px 7px; border-radius: 4px; text-transform: uppercase;
-    }
+    .status-badge { font-size: 9px; font-weight: 800; letter-spacing: 0.7px; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; }
     .badge-active { background: rgba(80,210,80,0.18);   color: #6dce6d; border: 1px solid rgba(80,210,80,0.3); }
     .badge-closed { background: rgba(160,160,160,0.15); color: #aaa;    border: 1px solid rgba(160,160,160,0.25); }
     .badge-future { background: rgba(99,160,255,0.18);  color: #8ab6ff; border: 1px solid rgba(99,160,255,0.3); }
-
-    .progress-bg {
-      background: rgba(255,255,255,0.09); border-radius: 4px;
-      height: 6px; overflow: hidden; margin-bottom: 7px;
-    }
-    .progress-fill {
-      height: 100%; border-radius: 4px;
-      transition: width 0.5s ease, background-color 0.5s ease;
-    }
+    .progress-bg { background: rgba(255,255,255,0.09); border-radius: 4px; height: 6px; overflow: hidden; margin-bottom: 7px; }
+    .progress-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease, background-color 0.5s ease; }
     .cell-footer { display: flex; justify-content: space-between; align-items: baseline; }
     .cell-pct  { color: #fff; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
     .cell-meta { color: rgba(255,255,255,0.4); font-size: 10px; }
 
-    /* Summary bar */
     #summary-bar {
       display: flex; align-items: center;
-      border-top: 1px solid rgba(255,255,255,0.07);
-      padding-top: 13px;
+      border-top: 1px solid rgba(255,255,255,0.07); padding-top: 13px;
       flex-wrap: wrap; row-gap: 6px;
     }
     .summ-item { flex: 1; min-width: 0; padding: 0 14px; }
@@ -184,7 +270,6 @@
     .summ-label { color: rgba(255,255,255,0.4); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
     .summ-value { color: #fff; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-    /* Tooltip */
     #tooltip {
       position: fixed; z-index: 700; pointer-events: none;
       background: rgba(12,14,20,0.92);
@@ -192,8 +277,7 @@
       border: 1px solid rgba(255,255,255,0.1);
       border-radius: 10px; padding: 10px 14px;
       font-size: 12px; line-height: 1.5;
-      opacity: 0; transition: opacity 0.15s;
-      max-width: 200px;
+      opacity: 0; transition: opacity 0.15s; max-width: 200px;
     }
     #tooltip.visible { opacity: 1; }
     #tooltip .tt-title { font-weight: 700; margin-bottom: 4px; }
@@ -207,7 +291,7 @@
 
 <div id="map"></div>
 
-<div id="title-panel">
+<div id="title-panel" class="glass">
   <h1>AWMC Landfill Cell Plan</h1>
   <p>Lavington NSW — 3D Fill Visualiser</p>
 </div>
@@ -219,6 +303,44 @@
   <div class="legend-item"><div class="legend-swatch" style="background:rgba(136,135,128,0.9)"></div>Capped / Closed</div>
 </div>
 
+<!-- Edit mode toggle -->
+<button id="edit-mode-btn" onclick="toggleEditMode()">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+  </svg>
+  Edit Cell Positions
+</button>
+
+<!-- Editor side panel -->
+<div id="editor-panel">
+  <div class="ep-header">
+    <div class="ep-title">Cell Position Editor</div>
+    <div class="ep-hint">Drag pins on map · Adjust radius · Copy to save</div>
+  </div>
+
+  <!-- Global size scale -->
+  <div class="ep-global">
+    <div class="ep-row-label">
+      <span class="lbl">Scale All Cells</span>
+      <span class="val" id="ed-global-val">1.0×</span>
+    </div>
+    <input type="range" id="ed-global-scale" min="0.4" max="2.0" value="1.0" step="0.05">
+  </div>
+
+  <!-- Per-cell rows (injected by JS) -->
+  <div id="editor-cells"></div>
+
+  <div class="ep-footer">
+    <button id="copy-config-btn" onclick="copyConfig()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+      </svg>
+      Copy Config to Clipboard
+    </button>
+  </div>
+</div>
+
 <div id="tooltip">
   <div class="tt-title" id="tt-title"></div>
   <div class="tt-row">Fill: <span class="tt-val" id="tt-pct"></span></div>
@@ -227,8 +349,6 @@
 </div>
 
 <div id="control-panel">
-
-  <!-- Sliders + collapse button always visible -->
   <div id="panel-header">
     <div class="slider-group">
       <div class="slider-label">
@@ -258,86 +378,44 @@
     </button>
   </div>
 
-  <!-- Collapsible: cell cards + summary -->
   <div id="collapsible">
     <div id="collapsible-inner">
       <div class="cells-row">
         <div class="cell-card" id="card-C1">
-          <div class="cell-header">
-            <div class="cell-name">Cell 1 — NW</div>
-            <div class="status-badge" id="badge-C1">CLOSED</div>
-          </div>
+          <div class="cell-header"><div class="cell-name">Cell 1 — NW</div><div class="status-badge" id="badge-C1">CLOSED</div></div>
           <div class="progress-bg"><div class="progress-fill" id="bar-C1"></div></div>
-          <div class="cell-footer">
-            <span class="cell-pct" id="pct-C1">100%</span>
-            <span class="cell-meta" id="meta-C1">Capped 2019</span>
-          </div>
+          <div class="cell-footer"><span class="cell-pct" id="pct-C1">100%</span><span class="cell-meta" id="meta-C1">Capped 2019</span></div>
         </div>
         <div class="cell-card" id="card-C2">
-          <div class="cell-header">
-            <div class="cell-name">Cell 2 — Centre</div>
-            <div class="status-badge" id="badge-C2">ACTIVE</div>
-          </div>
+          <div class="cell-header"><div class="cell-name">Cell 2 — Centre</div><div class="status-badge" id="badge-C2">ACTIVE</div></div>
           <div class="progress-bg"><div class="progress-fill" id="bar-C2"></div></div>
-          <div class="cell-footer">
-            <span class="cell-pct" id="pct-C2">—</span>
-            <span class="cell-meta" id="meta-C2"></span>
-          </div>
+          <div class="cell-footer"><span class="cell-pct" id="pct-C2">—</span><span class="cell-meta" id="meta-C2"></span></div>
         </div>
         <div class="cell-card" id="card-C3">
-          <div class="cell-header">
-            <div class="cell-name">Cell 3 — SW</div>
-            <div class="status-badge" id="badge-C3">FUTURE</div>
-          </div>
+          <div class="cell-header"><div class="cell-name">Cell 3 — SW</div><div class="status-badge" id="badge-C3">FUTURE</div></div>
           <div class="progress-bg"><div class="progress-fill" id="bar-C3"></div></div>
-          <div class="cell-footer">
-            <span class="cell-pct" id="pct-C3">—</span>
-            <span class="cell-meta" id="meta-C3"></span>
-          </div>
+          <div class="cell-footer"><span class="cell-pct" id="pct-C3">—</span><span class="cell-meta" id="meta-C3"></span></div>
         </div>
         <div class="cell-card" id="card-C4">
-          <div class="cell-header">
-            <div class="cell-name">Cell 4 — East</div>
-            <div class="status-badge" id="badge-C4">FUTURE</div>
-          </div>
+          <div class="cell-header"><div class="cell-name">Cell 4 — East</div><div class="status-badge" id="badge-C4">FUTURE</div></div>
           <div class="progress-bg"><div class="progress-fill" id="bar-C4"></div></div>
-          <div class="cell-footer">
-            <span class="cell-pct" id="pct-C4">—</span>
-            <span class="cell-meta" id="meta-C4"></span>
-          </div>
+          <div class="cell-footer"><span class="cell-pct" id="pct-C4">—</span><span class="cell-meta" id="meta-C4"></span></div>
         </div>
       </div>
-
       <div id="summary-bar">
-        <div class="summ-item">
-          <div class="summ-label">Airspace Consumed</div>
-          <div class="summ-value" id="s-consumed">—</div>
-        </div>
+        <div class="summ-item"><div class="summ-label">Airspace Consumed</div><div class="summ-value" id="s-consumed">—</div></div>
         <div class="summ-divider"></div>
-        <div class="summ-item">
-          <div class="summ-label">Total Site Capacity</div>
-          <div class="summ-value">1,970,000 m³</div>
-        </div>
+        <div class="summ-item"><div class="summ-label">Total Site Capacity</div><div class="summ-value">1,970,000 m³</div></div>
         <div class="summ-divider"></div>
-        <div class="summ-item">
-          <div class="summ-label">Overall Fill</div>
-          <div class="summ-value" id="s-overall">—</div>
-        </div>
+        <div class="summ-item"><div class="summ-label">Overall Fill</div><div class="summ-value" id="s-overall">—</div></div>
         <div class="summ-divider"></div>
-        <div class="summ-item">
-          <div class="summ-label">Active Cell Closes</div>
-          <div class="summ-value" id="s-active-closes">—</div>
-        </div>
+        <div class="summ-item"><div class="summ-label">Active Cell Closes</div><div class="summ-value" id="s-active-closes">—</div></div>
         <div class="summ-divider"></div>
-        <div class="summ-item">
-          <div class="summ-label">Site Life Remaining</div>
-          <div class="summ-value" id="s-site-life">—</div>
-        </div>
+        <div class="summ-item"><div class="summ-label">Site Life Remaining</div><div class="summ-value" id="s-site-life">—</div></div>
       </div>
-    </div><!-- /collapsible-inner -->
-  </div><!-- /collapsible -->
-
-</div><!-- /control-panel -->
+    </div>
+  </div>
+</div>
 
 <script>
 'use strict';
@@ -352,26 +430,25 @@ const COL_RADIUS    = 12;
 const H_SCALE       = 0.0015;
 const ANIM_DURATION = 600;
 
-// Cell positions calibrated against Google Earth satellite imagery.
-// North part of site = NW closed cell; main central waste mass = C2;
-// southern excavated pad = C3 SW; eastern developed plateau = C4.
-// Fine-tune lat/lon here if you have survey-accurate centroids.
 const CELLS = [
-  { id:'C1', name:'Cell 1 — NW',     cap:320000, opened:2012, closed:2019,
-    lat:-36.02785, lon:146.88845, radius:78 },
-  { id:'C2', name:'Cell 2 — Centre', cap:480000, opened:2019, closed:2027,
-    lat:-36.02950, lon:146.88905, radius:105 },
-  { id:'C3', name:'Cell 3 — SW',     cap:550000, opened:2027, closed:2034,
-    lat:-36.03095, lon:146.88820, radius:90 },
-  { id:'C4', name:'Cell 4 — East',   cap:620000, opened:2034, closed:2042,
-    lat:-36.02920, lon:146.89120, radius:85 },
+  { id:'C1', name:'Cell 1 — NW',     cap:320000, opened:2012, closed:2019, lat:-36.02785, lon:146.88845, radius:78  },
+  { id:'C2', name:'Cell 2 — Centre', cap:480000, opened:2019, closed:2027, lat:-36.02950, lon:146.88905, radius:105 },
+  { id:'C3', name:'Cell 3 — SW',     cap:550000, opened:2027, closed:2034, lat:-36.03095, lon:146.88820, radius:90  },
+  { id:'C4', name:'Cell 4 — East',   cap:620000, opened:2034, closed:2042, lat:-36.02920, lon:146.89120, radius:85  },
 ];
+
+// Base radii — reference point for the global scale slider
+const BASE_RADII = {};
+CELLS.forEach(c => { BASE_RADII[c.id] = c.radius; });
 
 const M_PER_DEG_LAT = 111000;
 const M_PER_DEG_LON = 111000 * Math.cos(-36.03 * Math.PI / 180);
 
+// Accent colors per cell (for markers and circle outlines)
+const CELL_COLORS = { C1:'#a8a7a0', C2:'#fac775', C3:'#7aba47', C4:'#7aba47' };
+
 // ═══════════════════════════════════════════════════════════
-// MAP STYLE  —  ESRI satellite + place labels (no key needed)
+// MAP STYLE
 // ═══════════════════════════════════════════════════════════
 
 const MAP_STYLE = {
@@ -380,20 +457,17 @@ const MAP_STYLE = {
     'esri-sat': {
       type: 'raster',
       tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-      tileSize: 256,
-      attribution: '© Esri, Maxar, Earthstar Geographics',
-      maxzoom: 19,
+      tileSize: 256, attribution: '© Esri, Maxar, Earthstar Geographics', maxzoom: 19,
     },
     'esri-labels': {
       type: 'raster',
       tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'],
-      tileSize: 256,
-      maxzoom: 19,
+      tileSize: 256, maxzoom: 19,
     },
   },
   layers: [
-    { id: 'sat',    type: 'raster', source: 'esri-sat',    minzoom: 0, maxzoom: 24 },
-    { id: 'labels', type: 'raster', source: 'esri-labels', minzoom: 0, maxzoom: 24 },
+    { id:'sat',    type:'raster', source:'esri-sat',    minzoom:0, maxzoom:24 },
+    { id:'labels', type:'raster', source:'esri-labels', minzoom:0, maxzoom:24 },
   ],
 };
 
@@ -410,10 +484,7 @@ function buildColumnGrid(cell) {
       const dx = (i - half) * spacing;
       const dy = (j - half) * spacing;
       if (Math.hypot(dx, dy) <= cell.radius * 0.93) {
-        cols.push([
-          cell.lon + dx / M_PER_DEG_LON,
-          cell.lat + dy / M_PER_DEG_LAT,
-        ]);
+        cols.push([cell.lon + dx / M_PER_DEG_LON, cell.lat + dy / M_PER_DEG_LAT]);
       }
     }
   }
@@ -461,8 +532,8 @@ function barHex(pct) {
 let animFrame = null, animStart = null;
 let fromH = {}, toH = {}, currentH = {};
 
-const lerp       = (a, b, t) => a + (b - a) * t;
-const easeInOut  = t => t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t;
+const lerp      = (a, b, t) => a + (b - a) * t;
+const easeInOut = t => t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t;
 
 function targetHeights(year, intake) {
   const h = {};
@@ -524,18 +595,14 @@ function renderColumns() {
   const data = buildLayerData();
   deckOverlay.setProps({
     layers: [new deck.ColumnLayer({
-      id:            'landfill-cols',
-      data,
-      diskResolution: 6,
-      radius:         COL_RADIUS,
-      extruded:       true,
-      getPosition:    d => d.position,
-      getElevation:   d => d.height,
-      getFillColor:   d => d.color,
-      stroked:        false,
-      pickable:       true,
+      id: 'landfill-cols', data,
+      diskResolution: 6, radius: COL_RADIUS, extruded: true,
+      getPosition:   d => d.position,
+      getElevation:  d => d.height,
+      getFillColor:  d => d.color,
+      stroked: false, pickable: true,
       updateTriggers: { getElevation: Date.now(), getFillColor: currentYear },
-      onHover:        info => handleHover(info),
+      onHover: info => handleHover(info),
     })]
   });
 }
@@ -547,7 +614,7 @@ function renderColumns() {
 const tooltip = document.getElementById('tooltip');
 
 function handleHover(info) {
-  if (!info?.object) { tooltip.classList.remove('visible'); return; }
+  if (editMode || !info?.object) { tooltip.classList.remove('visible'); return; }
   const cell = CELLS.find(c => c.id === info.object.cellId);
   if (!cell) return;
   const { filled, pct } = calcFill(cell, currentYear, currentIntake);
@@ -580,14 +647,13 @@ function updateUI() {
     badge.className   = 'status-badge badge-' + status.toLowerCase();
 
     const bar = document.getElementById(`bar-${cell.id}`);
-    bar.style.width           = clampPct.toFixed(2) + '%';
+    bar.style.width = clampPct.toFixed(2) + '%';
     bar.style.backgroundColor = barHex(pct);
     document.getElementById(`pct-${cell.id}`).textContent = clampPct.toFixed(1) + '%';
 
     const meta = document.getElementById(`meta-${cell.id}`);
     if (status === 'ACTIVE') {
-      const yrsLeft = (cell.cap - filled) / (currentIntake / COMPACTION);
-      meta.textContent = yrsLeft.toFixed(1) + ' yrs remaining';
+      meta.textContent = ((cell.cap - filled) / (currentIntake / COMPACTION)).toFixed(1) + ' yrs remaining';
     } else if (status === 'FUTURE') {
       meta.textContent = 'Opens ' + cell.opened;
     } else {
@@ -603,8 +669,7 @@ function updateUI() {
   if (activeCell) {
     const { filled } = calcFill(activeCell, currentYear, currentIntake);
     const yrsLeft    = (activeCell.cap - filled) / (currentIntake / COMPACTION);
-    document.getElementById('s-active-closes').textContent =
-      `~${Math.round(currentYear + yrsLeft)} (${yrsLeft.toFixed(1)} yrs)`;
+    document.getElementById('s-active-closes').textContent = `~${Math.round(currentYear + yrsLeft)} (${yrsLeft.toFixed(1)} yrs)`;
   } else {
     document.getElementById('s-active-closes').textContent = '—';
   }
@@ -618,15 +683,14 @@ function updateUI() {
 // COLLAPSE TOGGLE
 // ═══════════════════════════════════════════════════════════
 
-const panel      = document.getElementById('control-panel');
+const panel       = document.getElementById('control-panel');
 const collapseBtn = document.getElementById('collapse-btn');
-const btnLabel   = collapseBtn.querySelector('.btn-label');
-let collapsed    = false;
+let collapsed     = false;
 
 collapseBtn.addEventListener('click', () => {
   collapsed = !collapsed;
   panel.classList.toggle('collapsed', collapsed);
-  btnLabel.textContent = collapsed ? 'Expand' : 'Minimise';
+  collapseBtn.querySelector('.btn-label').textContent = collapsed ? 'Expand' : 'Minimise';
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -634,13 +698,8 @@ collapseBtn.addEventListener('click', () => {
 // ═══════════════════════════════════════════════════════════
 
 const map = new maplibregl.Map({
-  container: 'map',
-  style:     MAP_STYLE,
-  center:    [146.88990, -36.02960],
-  zoom:       15.5,
-  pitch:      50,
-  bearing:   -20,
-  antialias:  true,
+  container: 'map', style: MAP_STYLE,
+  center: [146.88990, -36.02960], zoom: 15.5, pitch: 50, bearing: -20, antialias: true,
 });
 
 map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
@@ -649,9 +708,26 @@ map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
 map.on('load', () => {
   deckOverlay = new deck.MapboxOverlay({ interleaved: false, layers: [] });
   map.addControl(deckOverlay);
+
+  // Add circle sources/layers for editor (hidden until edit mode)
+  CELLS.forEach(cell => {
+    map.addSource(`circle-src-${cell.id}`, { type:'geojson', data: makeCircleGeoJSON(cell) });
+    map.addLayer({
+      id: `circle-fill-${cell.id}`, type:'fill', source:`circle-src-${cell.id}`,
+      paint: { 'fill-color': CELL_COLORS[cell.id], 'fill-opacity': 0.15 },
+      layout: { visibility:'none' },
+    });
+    map.addLayer({
+      id: `circle-line-${cell.id}`, type:'line', source:`circle-src-${cell.id}`,
+      paint: { 'line-color': CELL_COLORS[cell.id], 'line-width': 2.5, 'line-dasharray':[5,3] },
+      layout: { visibility:'none' },
+    });
+  });
+
   currentH = targetHeights(currentYear, currentIntake);
   renderColumns();
   updateUI();
+  buildEditorPanel();
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -673,6 +749,183 @@ document.getElementById('intake-slider').addEventListener('input', e => {
 });
 
 updateUI();
+
+// ═══════════════════════════════════════════════════════════
+// EDITOR CONSOLE
+// ═══════════════════════════════════════════════════════════
+
+let editMode = false;
+const editMarkers = {};
+let globalScale = 1.0;
+
+function makeCircleGeoJSON(cell) {
+  const pts = [];
+  for (let i = 0; i <= 64; i++) {
+    const a = (i / 64) * 2 * Math.PI;
+    pts.push([cell.lon + Math.cos(a) * cell.radius / M_PER_DEG_LON,
+              cell.lat + Math.sin(a) * cell.radius / M_PER_DEG_LAT]);
+  }
+  return { type:'Feature', geometry:{ type:'Polygon', coordinates:[pts] } };
+}
+
+function setCircleLayersVisible(on) {
+  const v = on ? 'visible' : 'none';
+  CELLS.forEach(c => {
+    if (map.getLayer(`circle-fill-${c.id}`)) {
+      map.setLayoutProperty(`circle-fill-${c.id}`, 'visibility', v);
+      map.setLayoutProperty(`circle-line-${c.id}`, 'visibility', v);
+    }
+  });
+}
+
+function updateCircleSource(cell) {
+  const src = map.getSource(`circle-src-${cell.id}`);
+  if (src) src.setData(makeCircleGeoJSON(cell));
+}
+
+function refreshEditorRow(cellId) {
+  const cell = CELLS.find(c => c.id === cellId);
+  if (!cell) return;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set(`ed-lat-${cellId}`, cell.lat.toFixed(6));
+  set(`ed-lon-${cellId}`, cell.lon.toFixed(6));
+  set(`ed-rad-${cellId}`, Math.round(cell.radius) + ' m');
+  const sld = document.getElementById(`ed-rslider-${cellId}`);
+  if (sld) sld.value = Math.round(cell.radius);
+}
+
+function rebuildCell(cell) {
+  CELL_COLS[cell.id] = buildColumnGrid(cell);
+  const h = targetHeights(currentYear, currentIntake);
+  currentH[cell.id] = h[cell.id];
+  renderColumns();
+  updateCircleSource(cell);
+}
+
+function buildEditorPanel() {
+  const container = document.getElementById('editor-cells');
+  container.innerHTML = '';
+  CELLS.forEach(cell => {
+    const row = document.createElement('div');
+    row.className = 'ed-cell-row';
+    row.innerHTML = `
+      <div class="ed-cell-header">
+        <span class="ed-dot" style="background:${CELL_COLORS[cell.id]}"></span>
+        <span class="ed-cell-name">${cell.name}</span>
+      </div>
+      <div class="ed-coords">
+        <div class="ed-coord-item">
+          <span class="ed-coord-lbl">Lat</span>
+          <span class="ed-coord-val" id="ed-lat-${cell.id}">${cell.lat.toFixed(6)}</span>
+        </div>
+        <div class="ed-coord-item">
+          <span class="ed-coord-lbl">Lon</span>
+          <span class="ed-coord-val" id="ed-lon-${cell.id}">${cell.lon.toFixed(6)}</span>
+        </div>
+        <div class="ed-coord-item">
+          <span class="ed-coord-lbl">Radius</span>
+          <span class="ed-coord-val" id="ed-rad-${cell.id}">${Math.round(cell.radius)} m</span>
+        </div>
+      </div>
+      <div class="ed-slider-label">
+        <span class="lbl">Cell Radius</span>
+        <span class="val" id="ed-rad-${cell.id}2">${Math.round(cell.radius)} m</span>
+      </div>
+      <input type="range" class="ed-slider" id="ed-rslider-${cell.id}"
+             min="40" max="160" value="${Math.round(cell.radius)}" step="1">
+    `;
+    container.appendChild(row);
+
+    document.getElementById(`ed-rslider-${cell.id}`).addEventListener('input', e => {
+      const r = parseInt(e.target.value, 10);
+      cell.radius = r;
+      BASE_RADII[cell.id] = r;
+      // Recalculate global scale to reflect manual override
+      document.getElementById('ed-global-val').textContent = '—';
+      refreshEditorRow(cell.id);
+      document.getElementById(`ed-rad-${cell.id}2`).textContent = r + ' m';
+      rebuildCell(cell);
+    });
+  });
+}
+
+function makeMarkerEl(cell) {
+  const el = document.createElement('div');
+  el.className = 'cell-edit-marker';
+  el.style.setProperty('--mc', CELL_COLORS[cell.id]);
+  el.textContent = cell.id.replace('C', '');
+  el.title = cell.name + ' — drag to reposition';
+  return el;
+}
+
+function toggleEditMode() {
+  editMode ? exitEditMode() : enterEditMode();
+}
+
+function enterEditMode() {
+  editMode = true;
+  document.getElementById('edit-mode-btn').classList.add('active');
+  document.getElementById('editor-panel').classList.add('open');
+  panel.classList.add('editor-open');
+  setCircleLayersVisible(true);
+
+  CELLS.forEach(cell => {
+    const marker = new maplibregl.Marker({ element: makeMarkerEl(cell), draggable: true })
+      .setLngLat([cell.lon, cell.lat])
+      .addTo(map);
+
+    marker.on('drag', () => {
+      const ll = marker.getLngLat();
+      cell.lat = ll.lat;
+      cell.lon = ll.lng;
+      refreshEditorRow(cell.id);
+      rebuildCell(cell);
+    });
+
+    editMarkers[cell.id] = marker;
+  });
+}
+
+function exitEditMode() {
+  editMode = false;
+  document.getElementById('edit-mode-btn').classList.remove('active');
+  document.getElementById('editor-panel').classList.remove('open');
+  panel.classList.remove('editor-open');
+  setCircleLayersVisible(false);
+  CELLS.forEach(c => { if (editMarkers[c.id]) { editMarkers[c.id].remove(); delete editMarkers[c.id]; } });
+}
+
+// Global scale slider
+document.getElementById('ed-global-scale').addEventListener('input', e => {
+  globalScale = parseFloat(e.target.value);
+  document.getElementById('ed-global-val').textContent = globalScale.toFixed(2) + '×';
+  CELLS.forEach(cell => {
+    cell.radius = BASE_RADII[cell.id] * globalScale;
+    refreshEditorRow(cell.id);
+    const id2 = document.getElementById(`ed-rad-${cell.id}2`);
+    if (id2) id2.textContent = Math.round(cell.radius) + ' m';
+    rebuildCell(cell);
+  });
+});
+
+async function copyConfig() {
+  const lines = CELLS.map(c =>
+    `  { id:'${c.id}', name:'${c.name}', cap:${c.cap}, opened:${c.opened}, closed:${c.closed},\n` +
+    `    lat:${c.lat.toFixed(6)}, lon:${c.lon.toFixed(6)}, radius:${Math.round(c.radius)} },`
+  ).join('\n');
+  const text = `const CELLS = [\n${lines}\n];`;
+
+  try {
+    await navigator.clipboard.writeText(text);
+    const btn = document.getElementById('copy-config-btn');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✓ Copied to clipboard!';
+    btn.style.cssText += 'background:rgba(80,210,80,0.2);border-color:rgba(80,210,80,0.4);color:#6dce6d';
+    setTimeout(() => { btn.innerHTML = orig; btn.style.cssText = ''; }, 2200);
+  } catch {
+    prompt('Copy this config and paste it into the CELLS array in the HTML source:', text);
+  }
+}
 </script>
 </body>
 </html>
